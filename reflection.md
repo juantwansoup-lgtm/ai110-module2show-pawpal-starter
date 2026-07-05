@@ -5,12 +5,20 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+The user should be able to add a pet, schedule their tasks, and availability
 - What classes did you include, and what responsibilities did you assign to each?
+ - Owner: Holds the owner's info and available time. Can add pets and set availability.
+ - Pet:Holds a pet's details and its list of tasks. Can add and remove tasks.
+ - Task: Holds one care task (type, duration, priority). Knows if it fits in the available time.
+ - Scheduler: Reads the owner's time and the pets' tasks, then builds and explains the daily plan.
+ - TaskType and Time: TaskType lists the task categories; Time handles time math.
 
 **b. Design changes**
 
-- Did your design change during implementation?
+- Did your design change during implementation? 
 - If yes, describe at least one change and why you made it.
+
+The Time class was added to the UML along with it relationships. The Owner and Task relied on it however it wasn't present and would cause the diagram and code to be out of sync. T
 
 ---
 

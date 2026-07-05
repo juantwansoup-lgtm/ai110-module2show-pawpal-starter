@@ -1,15 +1,82 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
-
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Owner {
+        -String name
+        -List~Pet~ pets
+        -Time availableStart
+        -Time availableEnd
+        +addPet(Pet pet) void
+        +setAvailability(Time start, Time end) void
+        +totalAvailableMinutes() int
+        +allTasks() List~Task~
+        +listPets() List~Pet~
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        -String name
+        -String species
+        -String breed
+        -int age
+        -List~Task~ tasks
+        +addTask(Task task) void
+        +removeTask(Task task) void
+        +getTasksByPriority() List~Task~
     }
 
-    ClassName --> AnotherClass : relationship
+    class Task {
+        -String name
+        -TaskType type
+        -int durationMinutes
+        -int priority
+        -Recurrence recurrence
+        -Time scheduledStart
+        +schedule(Time start) void
+        +getEndTime() Time
+        +setPriority(int priority) void
+        +fitsWithin(int availableMinutes) boolean
+        +conflictsWith(Task other) boolean
+    }
+
+    class Scheduler {
+        -int remainingMinutes
+        -List~Task~ plannedTasks
+        +buildPlan(Owner owner) List~Task~
+        +canFit(Task task) boolean
+        +hasConflict(Task task) boolean
+        +explainPlan() String
+    }
+
+    class Time {
+        -int hour
+        -int minute
+        +toMinutes() int
+        +addMinutes(int minutes) Time
+        +isBefore(Time other) boolean
+        +overlaps(Time start, int durationMinutes) boolean
+        +format() String
+    }
+
+    class TaskType {
+        <<enumeration>>
+        WALK
+        FEEDING
+        MEDS
+        ENRICHMENT
+        GROOMING
+    }
+
+    class Recurrence {
+        <<enumeration>>
+        ONCE
+        DAILY
+        WEEKLY
+    }
+
+    Owner "1" *-- "1..*" Pet : owns
+    Owner "1" --> "2" Time : availability window
+    Pet "1" *-- "0..*" Task : has
+    Task "1" --> "1" TaskType : is of
+    Task "1" --> "1" Recurrence : repeats
+    Task "1" --> "0..1" Time : scheduledStart
+    Scheduler ..> Owner : reads availability
+    Scheduler ..> Pet : reads tasks
+    Scheduler "1" o-- "0..*" Task : plans
