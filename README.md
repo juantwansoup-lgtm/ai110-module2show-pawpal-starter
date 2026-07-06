@@ -76,14 +76,31 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+PawPal+ goes beyond a basic plan with four pieces of smarter scheduling logic, all implemented in `pawpal_system.py`.
 
-| Feature | Method(s) | Notes |
-|---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Feature            | Method(s)                                                 | Notes                                                                  |
+| ------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Task sorting       | `Scheduler.sort_by_time()`, `Pet.get_tasks_by_priority()` | Orders the plan by `"HH:MM"` start time; unscheduled tasks sort last.  |
+| Filtering          | `Owner.filter_tasks(pet_name, completed)`                 | Optional filters that combine — e.g. one pet's pending tasks only.     |
+| Conflict detection | `Scheduler.detect_conflicts()`, `Task.conflicts_with()`   | Returns overlap warnings without crashing; catches same- and cross-pet.|
+| Recurring tasks    | `Task.next_occurrence()`, `Pet.mark_task_complete()`      | Completing a task spawns the next (+1 day daily, +7 days weekly).      |
+| Plan building      | `Scheduler.build_plan()`, `Scheduler._free_intervals()`   | Anchors fixed times first, then gap-fills flexible tasks by priority.  |
+
+### Sorting behavior
+
+`Scheduler.sort_by_time()` orders tasks by their scheduled start time. Each start is compared as a zero-padded `"HH:MM"` string (so `"08:30"` < `"10:00"`), and unscheduled tasks fall to the end. `Pet.get_tasks_by_priority()` provides the alternative priority ordering (1 = most important first).
+
+### Filtering behavior
+
+`Owner.filter_tasks(pet_name=None, completed=None)` returns tasks narrowed by pet name and/or completion status. Both filters are optional and combine — e.g. `filter_tasks(pet_name="Mochi", completed=False)` returns only Mochi's pending tasks; passing nothing returns every task.
+
+### Conflict detection logic
+
+`Scheduler.detect_conflicts()` scans scheduled tasks pairwise via `Task.conflicts_with()` and returns a list of warning messages for overlapping time windows (empty if none). It is lightweight and non-fatal — it never raises, so the program keeps running and just reports the clash, whether the two tasks belong to the same pet or different pets.
+
+### Recurring task logic
+
+`Task.next_occurrence()` builds a fresh, uncompleted copy of a recurring task with its due date advanced by `datetime.timedelta` — +1 day for **daily** tasks, +7 days for **weekly** (one-off tasks return `None`). `Pet.mark_task_complete()` ties this to completion: finishing a recurring task automatically creates the next occurrence and attaches it to the pet.
 
 ## 📸 Demo Walkthrough
 

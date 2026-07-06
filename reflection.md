@@ -27,12 +27,22 @@ The Time class was added to the UML along with it relationships. The Owner and T
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
+
+It considers the owner's available hours, fixed appointment times (like "meds at 09:00"), task priority, task duration, and whether a task is already done.
+
 - How did you decide which constraints mattered most?
+
+Fixed times come first because they have to happen at a set time. After that I sort by priority so the important tasks get a slot before optional ones, and use duration only to break ties. A pet owner cares most that the essential care gets done.
 
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+
+It places each task in the first open slot that fits instead of searching for the best possible fit. So one long task can take up space that two shorter tasks could have used, and anything that doesn't fit is skipped.
+
 - Why is that tradeoff reasonable for this scenario?
+
+For one owner's short daily list, a perfect schedule isn't worth the extra complexity. The simple approach is fast and easy to follow, and skipped tasks are shown with a reason so nothing disappears silently.
 
 ---
 
