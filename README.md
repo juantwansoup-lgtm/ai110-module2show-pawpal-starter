@@ -60,18 +60,24 @@ Remaining free time: 175 min
 
 ## 🧪 Testing PawPal+
 
-```bash
-# Run the full test suite:
-pytest
+Run the full test suite from the project root:
 
-# Run with coverage:
-pytest --cov
+```bash
+python -m pytest
 ```
+
+The tests live in `tests/test_pawpal.py` and cover the most important
+scheduling behaviors:
+
+- **Task basics** — marking a task complete flips its status; adding a task to a pet increases that pet's task count.
+- **Sorting correctness** — `Scheduler.sort_by_time()` returns tasks in chronological order by start time, even when given them out of order.
+- **Recurrence logic** — completing a daily task creates a fresh, uncompleted copy due the following day and attaches it to the pet.
+- **Conflict detection** — two tasks scheduled at the same time are flagged, while back-to-back tasks (one ending as the next begins) are correctly *not* flagged.
 
 Sample test output:
 
 ```
-# Paste your pytest output here
+6 passed in 0.02s
 ```
 
 ## 📐 Smarter Scheduling
