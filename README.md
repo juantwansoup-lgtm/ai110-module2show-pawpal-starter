@@ -22,6 +22,18 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## ✨ Features
+
+The scheduling logic in `pawpal_system.py` implements the following algorithms:
+
+- **Priority-based plan building** — anchors fixed-time tasks (e.g. "meds at 09:00") at their exact slot, then greedily packs flexible tasks into the remaining gaps in priority order (ties broken by shortest duration, so more tasks fit).
+- **Free-interval computation** — scans the availability window and computes the open gaps *around* fixed commitments, so flexible tasks never land on an occupied slot.
+- **Sorting by time** — orders the plan chronologically using zero-padded `"HH:MM"` string comparison (`"08:30"` < `"10:00"`); unscheduled tasks sort to the end.
+- **Conflict warnings** — pairwise overlap detection across *all* pets that returns human-readable warnings without crashing; back-to-back tasks (one ending as the next begins) are correctly *not* flagged.
+- **Daily / weekly recurrence** — completing a recurring task auto-spawns its next occurrence, advancing the due date with `datetime.timedelta` (+1 day daily, +7 days weekly) so month/year/leap-year rollovers are handled correctly.
+- **Task filtering** — filter by pet name and/or completion status, with both filters combining (e.g. one pet's pending tasks only).
+- **Availability-derived capacity** — total care minutes are derived from the availability window, so capacity never drifts out of sync with a duplicate counter.
+
 ## Getting started
 
 ### Setup
@@ -108,14 +120,95 @@ PawPal+ goes beyond a basic plan with four pieces of smarter scheduling logic, a
 
 `Task.next_occurrence()` builds a fresh, uncompleted copy of a recurring task with its due date advanced by `datetime.timedelta` — +1 day for **daily** tasks, +7 days for **weekly** (one-off tasks return `None`). `Pet.mark_task_complete()` ties this to completion: finishing a recurring task automatically creates the next occurrence and attaches it to the pet.
 
-## 📸 Demo Walkthrough
+## 🎬 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+### Main UI features (Streamlit app — `app.py`)
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+The app is a single scrolling page where a user can:
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+- **Set owner + availability** — enter the owner's name and pick an available-from / available-until window (the care window the scheduler plans within).
+- **Add pets** — enter name, species, breed, and age; a running caption lists the current pets and duplicates are rejected with a warning.
+- **Add tasks** — for a chosen pet, enter a title, type (walk / feeding / meds / enrichment / grooming), duration, and priority (high / medium / low). Optionally mark a task as a **fixed start time** for appointments.
+- **Browse tasks** — a **Current Tasks** panel with filter dropdowns (by pet, by status) and summary metrics (shown / pending / completed), rendered as a polished table with colored priority badges.
+- **Generate the schedule** — one button builds the day's plan and displays it as a timeline table, plus a plain-English explanation.
+
+### Example workflow
+
+1. Set the owner to **Sam** and the availability window to **08:00–12:00**.
+2. **Add a pet** → Biscuit (Dog) and Mochi (Cat).
+3. **Schedule tasks** → e.g. a fixed *Morning walk* at 08:30, fixed *Medication* at 09:15, and flexible *Feeding* and *Grooming*.
+4. Click **Generate schedule** to **view today's schedule** as a chronological timeline.
+5. Use the **Current Tasks** filters to view, say, only Mochi's pending tasks.
+
+### Key Scheduler behaviors shown
+
+- **Sorting** — the plan is displayed earliest-start-first via `sort_by_time()`, even though the tasks were added out of order.
+- **Priority gap-filling** — fixed tasks anchor first; flexible tasks flow into the free gaps by priority.
+- **Conflict warnings** — two tasks landing on the same slot (even across different pets) raise a warning instead of crashing.
+- **Recurrence** — completing a daily/weekly task auto-creates its next occurrence.
+- **Filtering** — tasks can be narrowed by pet and/or completion status.
+
+### Sample CLI output
+
+Running the demo script (`python main.py`) exercises the same logic in the terminal:
+
+```
+============================================
+Today's Schedule for Sam
+Pets: Biscuit, Mochi
+============================================
+Daily plan:
+  08:00 - Feeding (10 min) [priority: 1]
+  08:10 - Grooming (15 min) [priority: 2]
+  08:30 - Morning walk (30 min) [priority: 2] (fixed)
+  09:15 - Medication (5 min) [priority: 1] (fixed)
+Remaining free time: 180 min
+
+============================================
+Planned tasks sorted by time (sort_by_time)
+============================================
+  08:00  Feeding
+  08:10  Grooming
+  08:30  Morning walk
+  09:15  Medication
+
+============================================
+Filtering (filter_tasks)
+============================================
+Mochi's tasks:
+  - Late playtime
+  - Medication
+  - Grooming
+Pending (not completed) tasks:
+  - Morning walk
+  - Feeding
+  - Medication
+  - Grooming
+Completed tasks:
+  - Late playtime
+Mochi's pending tasks (both filters at once):
+  - Medication
+  - Grooming
+
+============================================
+Recurrence (mark_task_complete)
+============================================
+Today is 2026-07-05
+Biscuit's tasks before completing: ['Morning walk', 'Feeding', 'Bath']
+
+Completed daily 'Feeding' (due 2026-07-05, completed=True)
+  -> auto-created next: 'Feeding' due 2026-07-06, completed=False
+Completed weekly 'Bath' (due 2026-07-05)
+  -> auto-created next: 'Bath' due 2026-07-12
+Completed one-off 'Grooming' -> next occurrence: None
+
+Biscuit's tasks after completing:  ['Morning walk', 'Feeding', 'Bath', 'Feeding', 'Bath']
+
+============================================
+Conflict detection (detect_conflicts)
+============================================
+Scheduled: Vet call 09:00, Grooming appt 09:00, Evening walk 18:00
+Found 1 conflict(s):
+  WARNING: 'Biscuit: Vet call' (09:00-09:30) overlaps 'Mochi: Grooming appt' (09:00-09:30).
+============================================
+```

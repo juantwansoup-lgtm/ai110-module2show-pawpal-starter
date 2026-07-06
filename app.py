@@ -121,19 +121,49 @@ else:
 # Show every task across all of the owner's pets.
 all_tasks = owner.all_tasks()
 if all_tasks:
-    st.write("Current tasks:")
-    st.table(
-        [
-            {
-                "task": t.name,
-                "type": t.type.value,
-                "duration_min": t.duration_minutes,
-                "priority": t.priority,
-                "fixed_start": t.fixed_start.format() if t.fixed_start else "--",
-            }
-            for t in all_tasks
-        ]
-    )
+    st.markdown("#### Current Tasks")
+
+    # --- Filter controls, wired to Owner.filter_tasks() -------------------
+    fcol1, fcol2 = st.columns(2)
+    with fcol1:
+        pet_filter = st.selectbox(
+            "Filter by pet", ["All pets"] + [p.name for p in pets]
+        )
+    with fcol2:
+        status_filter = st.selectbox("Filter by status", ["All", "Pending", "Completed"])
+
+    # Translate the friendly UI choices into filter_tasks() arguments.
+    pet_arg = None if pet_filter == "All pets" else pet_filter
+    completed_arg = {"All": None, "Pending": False, "Completed": True}[status_filter]
+    filtered = owner.filter_tasks(pet_name=pet_arg, completed=completed_arg)
+
+    # Present them sorted by priority (1 = most important first).
+    filtered = sorted(filtered, key=lambda t: t.priority)
+
+    # --- At-a-glance summary metrics -------------------------------------
+    mcol1, mcol2, mcol3 = st.columns(3)
+    mcol1.metric("Shown", len(filtered))
+    mcol2.metric("Pending", sum(1 for t in filtered if not t.completed))
+    mcol3.metric("Completed", sum(1 for t in filtered if t.completed))
+
+    if filtered:
+        st.table(
+            [
+                {
+                    "Task": t.name,
+                    "Type": t.type.value.title(),
+                    "Duration": f"{t.duration_minutes} min",
+                    "Priority": {1: "🔴 High", 2: "🟡 Medium", 3: "🟢 Low"}.get(
+                        t.priority, str(t.priority)
+                    ),
+                    "Fixed start": t.fixed_start.format() if t.fixed_start else "—",
+                    "Status": "✅ Done" if t.completed else "⏳ Pending",
+                }
+                for t in filtered
+            ]
+        )
+    else:
+        st.warning("No tasks match the current filters.")
 else:
     st.info("No tasks yet. Add one above.")
 
@@ -151,18 +181,36 @@ if st.button("Generate schedule"):
         if not plan:
             st.warning("No tasks fit in the available time. Try widening your window.")
         else:
-            st.markdown(f"### Today's Schedule for {owner.name}")
+            st.success(
+                f"Planned {len(plan)} task(s) for {owner.name} — "
+                f"{scheduler.remaining_minutes} min free."
+            )
+            st.markdown(f"### 📅 Today's Schedule for {owner.name}")
+            # Display the plan in chronological order using the Scheduler's own
+            # sorting method rather than re-sorting here in the UI.
+            ordered_plan = scheduler.sort_by_time(plan)
             st.table(
                 [
                     {
-                        "start": t.scheduled_start.format() if t.scheduled_start else "--:--",
-                        "task": t.name,
-                        "duration_min": t.duration_minutes,
-                        "priority": t.priority,
+                        "Start": t.scheduled_start.format() if t.scheduled_start else "--:--",
+                        "End": t.get_end_time().format() if t.get_end_time() else "--:--",
+                        "Task": t.name,
+                        "Duration": f"{t.duration_minutes} min",
+                        "Priority": {1: "🔴 High", 2: "🟡 Medium", 3: "🟢 Low"}.get(
+                            t.priority, str(t.priority)
+                        ),
+                        "Type": "📌 Fixed" if t.fixed_start else "🔄 Flexible",
                     }
-                    for t in plan
+                    for t in ordered_plan
                 ]
             )
+            # Surface any overlapping time windows via the Scheduler's conflict
+            # check (e.g. two pets' tasks landing on the same slot).
+            conflicts = scheduler.detect_conflicts(ordered_plan)
+            if conflicts:
+                st.error("⚠️ Schedule conflicts detected:")
+                for warning in conflicts:
+                    st.write(f"- {warning}")
             # Tell the owner plainly if anything got left out, and why.
             if scheduler.skipped_tasks:
                 st.warning(
